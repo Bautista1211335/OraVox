@@ -1,0 +1,262 @@
+html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OraVox - Tu Agenda Parlante</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            color: #38bdf8;
+            letter-spacing: 2px;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        #reloj {
+            font-size: 5rem;
+            font-weight: bold;
+            color: #f43f5e;
+            text-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+            background: #1e293b;
+            padding: 1rem 3rem;
+            border-radius: 50px;
+            border: 2px solid #334155;
+        }
+
+        .panel-actividades {
+            background: #1e293b;
+            padding: 1.5rem;
+            border-radius: 15px;
+            width: 100%;
+            border: 1px solid #334155;
+        }
+
+        .formulario {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="time"] {
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            background: #0f172a;
+            color: white;
+            font-size: 1rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            background: #0f172a;
+            color: white;
+            font-size: 1rem;
+        }
+
+        button {
+            background: #38bdf8;
+            color: #0f172a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #0ea5e9;
+        }
+
+        .lista-actividades {
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .actividad-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0f172a;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 4px solid #38bdf8;
+        }
+
+        .btn-eliminar {
+            background: #ef4444;
+            color: white;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        .btn-eliminar:hover {
+            background: #dc2626;
+        }
+        
+        .aviso-voz {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>OraVox</h1>
+        <p>Tu tiempo, en voz alta</p>
+    </header>
+
+    <div class="main-container">
+        <!-- Reloj en medio de la pantalla -->
+        <div id="reloj">00:00:00</div>
+
+        <!-- Panel de configuración -->
+        <div class="panel-actividades">
+            <div class="formulario">
+                <input type="time" id="input-hora" required>
+                <input type="text" id="input-texto" placeholder="Ej: Hora de tomar agua o ir al gimnasio" required>
+                <button onclick="agregarActividad()">Guardar</button>
+            </div>
+
+            <ul class="lista-actividades" id="lista">
+                <!-- Aquí se cargarán las actividades dinámicamente -->
+            </ul>
+            <p class="aviso-voz">💡 Nota: Asegúrate de hacer un clic en la pantalla al cargar para activar los permisos de voz del navegador.</p>
+        </div>
+    </div>
+
+    <script>
+        let actividades = [];
+
+        // Función para actualizar el Reloj Central cada segundo
+        function actualizarReloj() {
+            const ahora = new Date();
+            const horas = String(ahora.getHours()).padStart(2, '0');
+            const minutos = String(ahora.getMinutes()).padStart(2, '0');
+            const segundos = String(ahora.getSeconds()).padStart(2, '0');
+            
+            document.getElementById('reloj').textContent = `${horas}:${minutos}:${segundos}`;
+
+            // Validar si la hora y minutos actuales coinciden con alguna tarea
+            // Buscamos solo en el segundo cero (:00) para evitar que se repita la voz varias veces en el mismo minuto
+            if (segundos === "00") {
+                const horaActual = `${horas}:${minutos}`;
+                verificarActividades(horaActual);
+            }
+        }
+
+        // Función de Voz (Web Speech API)
+        function hablar(texto) {
+            if ('speechSynthesis' in window) {
+                const mensaje = new SpeechSynthesisUtterance(texto);
+                mensaje.lang = 'es-ES'; // Configurado en español
+                mensaje.rate = 1.0;     // Velocidad normal
+                window.speechSynthesis.speak(mensaje);
+            } else {
+                console.log("Tu navegador no soporta reproducción de voz automática.");
+            }
+        }
+
+        // Comprobar si hay una actividad agendada para este minuto
+        function verificarActividades(hora) {
+            actividades.forEach(act => {
+                if (act.hora === hora) {
+                    hablar(`Atención. Es momento de: ${act.texto}`);
+                }
+            });
+        }
+
+        // Agregar actividades a la lista
+        function agregarActividad() {
+            const horaInput = document.getElementById('input-hora').value;
+            const textoInput = document.getElementById('input-texto').value;
+
+            if (!horaInput || !textoInput) {
+                alert("Por favor, completa la hora y la descripción de la actividad.");
+                return;
+            }
+
+            const nuevaActividad = {
+                id: Date.now(),
+                hora: horaInput,
+                texto: textoInput
+            };
+
+            actividades.push(nuevaActividad);
+            actualizarInterfaz();
+
+            // Limpiar inputs
+            document.getElementById('input-texto').value = '';
+        }
+
+        // Eliminar actividades
+        function eliminarActividad(id) {
+            actividades = actividades.filter(act => act.id !== id);
+            actualizarInterfaz();
+        }
+
+        // Renderizar la lista en pantalla
+        function actualizarInterfaz() {
+            const listaHTML = document.getElementById('lista');
+            listaHTML.innerHTML = '';
+
+            // Ordenar por hora para que se vea prolijo
+            actividades.sort((a, b) => a.hora.localeCompare(b.hora));
+
+            actividades.forEach(act => {
+                const li = document.createElement('li');
+                li.className = 'actividad-item';
+                li.innerHTML = `
+                    <span><strong>${act.hora}</strong> - ${act.texto}</span>
+                    <button class="btn-eliminar" onclick="eliminarActividad(${act.id})">Eliminar</button>
+                `;
+                listaHTML.appendChild(li);
+            });
+        }
+
+        // Iniciar el reloj de inmediato y actualizar cada 1 segundo
+        setInterval(actualizarReloj, 1000);
+        actualizarReloj();
+    </script>
+</body>
+</html>
